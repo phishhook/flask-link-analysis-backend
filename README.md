@@ -21,10 +21,6 @@ pip install -r requirements.txt
 ```
 ├── pickle
 │   ├── model.pkl
-├── static
-│   ├── styles.css
-├── templates
-│   ├── index.html
 ├── Phishing URL Detection.ipynb
 ├── Procfile
 ├── README.md
