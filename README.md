@@ -5,7 +5,15 @@ pip install -r requirements.txt
 ```
 
 <br>
+<br>
 
+## Start Server
+```bash
+python3 app,py
+```
+
+
+<br>
 <br>
 
 ||ML Model|	Accuracy|  	f1_score|	Recall|	Precision|
