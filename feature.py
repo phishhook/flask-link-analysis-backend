@@ -27,23 +27,27 @@ class FeatureExtraction:
             self.response = requests.get(url)
             self.soup = BeautifulSoup(self.response.text, 'html.parser')
             ##print(self.soup)
+            if not self.response or not self.response .status_code == 200 or not self.response.content not in ["b''", "b' '"]:
+                return None
         except:
-            pass
+            return None
 
         try:
             self.urlparse = urlparse(url)
             self.domain = self.urlparse.netloc
         except:
-            print("error 2")
+            #print("error 2")
             pass
 
         try:
-            print( self.domain)
+            #print( self.domain)
             self.whois_response = whois.query(self.domain)
-            print(self.whois_response.__dict__)
+            #print(self.whois_response.__dict__)
         except:
-            print("error")
+            #print("error")
             pass
+
+
 
 
         
@@ -392,6 +396,7 @@ class FeatureExtraction:
     def AgeofDomain(self):
         try:
             creation_date = self.whois_response.creation_date
+            print(creation_date)
             try:
                 if(len(creation_date)):
                     creation_date = creation_date[0]
@@ -400,6 +405,7 @@ class FeatureExtraction:
 
             today  = date.today()
             age = (today.year-creation_date.year)*12+(today.month-creation_date.month)
+            print("AGE", age)
             if age >=6:
                 return 1
             return -1
@@ -470,7 +476,7 @@ class FeatureExtraction:
                 # If the domain is not found then there will be no page_rank_integer
                 # and an exception will be thrown - this is the expeceted behaviour
                 page_rank_integer = data['response'][0]['page_rank_integer']
-                print("Page rank " , page_rank_integer)
+                #print("Page rank " , page_rank_integer)
 
                 if page_rank_integer >= 5:
                     return 1
@@ -481,13 +487,16 @@ class FeatureExtraction:
 
     # 28. GoogleIndex
     def GoogleIndex(self):
-        try:
-            site = search(self.url, 5)
-            if site:
-                return 1
-            else:
-                return -1
-        except:
+        google = "https://www.google.com/search?q=site:" + self.url + "&hl=en"
+        response = requests.get(google, cookies={"CONSENT": "YES+1"})
+        soup = BeautifulSoup(response.content, "html.parser")
+        not_indexed = re.compile("did not match any documents")
+
+        if soup(text=not_indexed):
+            print("This page is NOT indexed by Google.")
+            return -1
+        else:
+            print("This page is indexed by Google.")
             return 1
 
     # 29. LinksPointingToPage
