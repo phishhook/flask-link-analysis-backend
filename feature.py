@@ -214,6 +214,8 @@ class FeatureExtraction:
     # 13. RequestURL
     def RequestURL(self):
         try:
+
+            print("Percentage: ")
             for img in self.soup.find_all('img', src=True):
                 dots = [x.start(0) for x in re.finditer('\.', img['src'])]
                 if self.url in img['src'] or self.domain in img['src'] or len(dots) == 1:
@@ -240,6 +242,7 @@ class FeatureExtraction:
 
             try:
                 percentage = success/float(i) * 100
+                print("Percentage: ", percentage)
                 if percentage < 22.0:
                     return 1
                 elif((percentage >= 22.0) and (percentage < 61.0)):
@@ -493,10 +496,10 @@ class FeatureExtraction:
         not_indexed = re.compile("did not match any documents")
 
         if soup(text=not_indexed):
-            print("This page is NOT indexed by Google.")
+            ##print("This page is NOT indexed by Google.")
             return -1
         else:
-            print("This page is indexed by Google.")
+            ##print("This page is indexed by Google.")
             return 1
 
     # 29. LinksPointingToPage

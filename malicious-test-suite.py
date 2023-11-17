@@ -1,5 +1,5 @@
 import unittest
-from app2 import app
+from app import app
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -17,6 +17,11 @@ class TestYourApp(unittest.TestCase):
                 domain = line.strip()
                 response = self.app.post("/", query_string={"url": domain})
                 data = response.data.decode('utf-8')
+
+                if data == "N/A" :
+                    print("hi")
+                elif float(data.rstrip('%')) > 60:
+                    print(domain)
 
                 # Assuming 'data' contains the percentage value, extract and store it
                 # Adjust this part based on the actual structure of 'data'
@@ -51,7 +56,7 @@ class TestYourApp(unittest.TestCase):
         # Adding labels and title
         plt.xlabel('Percentage Safe')
         plt.ylabel('Frequency')
-        plt.title('Model 2: Distribution of Percentage Values for Known Malicious Sites')
+        plt.title('Model 1: Distribution of Percentage Values for Known Malicious Sites')
 
         # Display the plot
         plt.show()

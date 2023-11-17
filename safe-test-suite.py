@@ -1,5 +1,5 @@
 import unittest
-from app2 import app
+from app import app
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -17,6 +17,9 @@ class TestYourApp(unittest.TestCase):
                 domain = line.strip()
                 response = self.app.post("/", query_string={"url": domain})
                 data = response.data.decode('utf-8')
+
+                if data == "N/A" :
+                    print(domain)
 
                 # Assuming 'data' contains the percentage value, extract and store it
                 # Adjust this part based on the actual structure of 'data'

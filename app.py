@@ -10,6 +10,7 @@ import warnings
 import pickle
 warnings.filterwarnings('ignore')
 from feature import FeatureExtraction
+from feature2 import FeatureExtraction as FeatureExtraction2
 
 import time
 
@@ -30,11 +31,12 @@ app = Flask(__name__)
 def index():
 
     url = request.args.get("url")
-    obj = FeatureExtraction(url)
+    obj = FeatureExtraction2(url)
 
     if(obj.features == []):
         return "N/A"
     x = np.array(obj.getFeaturesList()).reshape(1,30) 
+
 
     y_pred =gbc.predict(x)[0]
     print(y_pred)

@@ -18,13 +18,14 @@ import json
 import csv
 import os
 import re
+import config
 
 
 ##from pandas2arff import pandas2arff
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
-key = 'scwk4soo8cc8gwcwwccwwwsss4gccg04owsc8gw0'
+key = config.API_KEY
 
 import signal
 
