@@ -48,15 +48,25 @@ class TestYourApp(unittest.TestCase):
         counts = counts[sorted_indices]
 
         # Set figure size to accommodate longer x-axis labels
-        plt.figure(figsize=(25, 6))
+        plt.figure(figsize=(60, 6))
 
         # Plotting the bar graph with sorted labels
         plt.bar([f"{percent:.2f}%" for percent in unique_percentages], counts, width=0.5, align='center')
+
+        plt.xticks(rotation=45)
 
         # Adding labels and title
         plt.xlabel('Percentage Safe')
         plt.ylabel('Frequency')
         plt.title('Model 1: Distribution of Percentage Values for Known Malicious Sites')
+
+        # Calculate the total number of percentages less than 50% and more than 50%
+        less_than_50 = sum(count for percent, count in zip(unique_percentages, counts) if percent < 50)
+        more_than_50 = sum(count for percent, count in zip(unique_percentages, counts) if percent >= 50)
+
+        # Display the totals in the top right corner
+        plt.text(len(unique_percentages) - 1, max(counts), f"<50%: {less_than_50}\n≥50%: {more_than_50}",
+                ha='right', va='top', bbox=dict(facecolor='white', alpha=0.8))
 
         # Display the plot
         plt.show()

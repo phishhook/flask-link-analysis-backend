@@ -67,22 +67,24 @@ class FeatureExtraction:
 
             # Use JavaScript to get the final URL
             final_url = driver.execute_script("return window.location.href;")
-            print("Final URL (Selenium):", final_url)
+            print("Final URL (Selenium):", final_url)            
 
             self.url = final_url
+
+            # Set a timeout for getting the page source
+            fully_rendered_html = WebDriverWait(driver, 10).until(
+                lambda x: x.page_source
+            )
+            self.soup = BeautifulSoup(fully_rendered_html, 'html.parser')
+
+            self.response = requests.get(self.url, timeout=15)  # Set timeout to 10 seconds
+            if not self.response or not self.response .status_code == 200 or not self.response.content not in ["b''", "b' '"]:
+                return None
 
         except Exception as e:
             print(f"Error: {e}")
             return None
         
-        try:
-            self.response = requests.get(self.url)
-            self.soup = BeautifulSoup(self.response.text, 'html.parser')
-            if not self.response or not self.response .status_code == 200 or not self.response.content not in ["b''", "b' '"]:
-                return None
-        except:
-            return None
-
         try:
             self.urlparse = urlparse(self.url)
             self.domain = self.urlparse.netloc
@@ -171,16 +173,18 @@ class FeatureExtraction:
         
     #6
     def PrefixSuffix_(self):
-        print("PrefixSuffix_")
-        if '-' in self.domain:
-            print("Phishing 6")
-            return -1  # Phishing
-        else:
-            return 1  # Legitimate
-
+        try:
+            match = re.findall('\-', self.url)
+            if match:
+                return -1
+            return 1
+        except:
+            return 
     #7
     def SubDomains(self):
         # Remove 'www.' if it exists
+        self.urlparse = urlparse(self.url)
+        self.domain = self.urlparse.netloc
         domain_without_www = self.domain.replace('www.', '')
 
         # Remove country-code top-level domain (ccTLD) if it exists
@@ -193,7 +197,7 @@ class FeatureExtraction:
         # Count the remaining dots
         num_dots = domain_without_www.count('.')
 
-        if num_dots == 1:
+        if num_dots <= 1:
             return 1  # Legitimate
         elif num_dots == 2:
             return 0  # Suspicious
@@ -233,60 +237,34 @@ class FeatureExtraction:
     #10
     def Favicon(self):
         try:
-            for link in self.soup.select('head link[rel="icon"], head link[rel="shortcut icon"]'):
-                favicon_url = link.get('href')
-
-                # Check if the favicon URL is an absolute URL
-                if favicon_url.startswith(('http://', 'https://')):
-                    favicon_domain = urlparse(favicon_url).netloc
-
-                    # Check if the favicon domain is the same as the main domain
-                    if favicon_domain == self.domain:
-                        return 1  # Legitimate
-
-                    # Check if the favicon URL contains the main domain
-                    if self.domain in favicon_url:
-                        return 1  # Legitimate
-                else:
-                    # Check if the favicon URL is relative and join with the main domain
-                    absolute_favicon_url = urljoin(self.url, favicon_url)
-                    absolute_favicon_domain = urlparse(absolute_favicon_url).netloc
-
-                    # Check if the absolute favicon domain is the same as the main domain
-                    if absolute_favicon_domain == self.domain:
-                        return 1  # Legitimate
-
-                    # Check if the absolute favicon URL contains the main domain
-                    if self.domain in absolute_favicon_url:
-                        return 1  # Legitimate
-            print("Phishing 10")
-            return -1  # Phishing (Favicon loaded from an external domain)
-        except Exception as e:
-            print(f"Error in Favicon check: {e}")
-            return -1  # Phishing (Error or exception)
+            for head in self.soup.find_all('head'):
+                for head.link in self.soup.find_all('link', href=True):
+                    dots = [x.start(0) for x in re.finditer('\.', head.link['href'])]
+                    if self.url in head.link['href'] or len(dots) == 1 or self.domain in head.link['href']:
+                        return 1
+            return -1
+        except:
+            return -1
 
 
     #11 
     def NonStdPort(self):
-        preferred_ports = [21, 22, 23, 80, 443, 445, 1433, 1521, 3306, 3389]
-        print("NonStdPort")
-        for port in preferred_ports:
-            is_open = self.CheckPortStatus(port)
-            if is_open:
-                print(port)
-                return -1  # Phishing
-        return 1  # Legitimate
-
-    def CheckPortStatus(self, port):
+        self.urlparse = urlparse(self.url)
+        self.domain = self.urlparse.netloc
         try:
-            with socket.create_connection((self.domain, port), timeout=0.05) as s:
-                return True
+            port = self.domain.split(":")
+            if len(port)>1:
+                return -1
+            return 1
         except:
-            return False
+            return -1
+
 
 
     #12 
     def HTTPSDomainURL(self):
+        self.urlparse = urlparse(self.url)
+        self.domain = self.urlparse.netloc
         if "https" in self.domain:
             print("Phishing 12")
             return -1  # Phishing
@@ -301,24 +279,24 @@ class FeatureExtraction:
             external_objects = 0
 
             # Check for external objects in the webpage (e.g., images, videos, sounds)
-            for tag in self.soup.find_all(['img', 'video', 'audio', 'source']):
+            for tag in self.soup.find_all(['img', 'video', 'audio', 'source', 'script']):
                 total_objects += 1
-                src = tag.get('src', '')
+                src = tag.get('src', None)
                 if src and urlparse(src).netloc != self.domain:
                     external_objects += 1
 
+
+            print("total_objects", total_objects)
             # Check for external objects in the stylesheets and scripts
-            for tag in self.soup.find_all(['link', 'script']):
+            for tag in self.soup.find_all(['link']):
                 total_objects += 1
-                href = tag.get('href', '')
+                href =tag.get('href', None)
                 if href and urlparse(href).netloc != self.domain:
                     external_objects += 1
 
             # Calculate the percentage of external objects
             if total_objects > 0:
                 percentage = (external_objects / total_objects) * 100
-                print(percentage)
-
 
                 if percentage < 22:
                     return 1  # Legitimate
@@ -344,7 +322,7 @@ class FeatureExtraction:
             # Check for anchor tags in the webpage
             for tag in self.soup.find_all('a', href=True):
                 total_anchors += 1
-                href = tag.get('href', '')
+                href = tag.get('href', None)
 
                 # Check if the anchor links to a different domain
                 if href and urlparse(href).netloc != self.domain:
@@ -391,6 +369,7 @@ class FeatureExtraction:
             # Calculate the percentage of links in Meta, Script, and Link tags
             if total_tags > 0:
                 percentage = (total_links / total_tags) * 100
+                print("PERCENTAGE!!!", percentage)
 
                 if percentage < 17:
                     return 1  # Legitimate
@@ -445,12 +424,16 @@ class FeatureExtraction:
     # 18. AbnormalURL
     def AbnormalURL(self):
         try:
-            if self.response.text == self.whois_response:
-                return 1
+            # Extract the host name from the URL
+            host_name = urlparse(self.url).hostname
+            # Check if the host name is not included in the URL
+            if host_name not in self.url:
+                print("Phishing 6")
+                return -1  # Phishing
             else:
-                return -1
+                return 1  # Legitimate
         except:
-            return -1
+            return 0
         
     #19
     def WebsiteForwarding(self):
@@ -607,7 +590,6 @@ class FeatureExtraction:
 
     #26
     def WebsiteTraffic(self):
-        print("reqqqqqqssdddd")
         api_key = config.API_KEY
         try:
 

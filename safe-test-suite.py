@@ -56,7 +56,15 @@ class TestYourApp(unittest.TestCase):
         # Adding labels and title
         plt.xlabel('Percentage Safe')
         plt.ylabel('Frequency')
-        plt.title('Model 2: Distribution of Percentage Values for Known Safe Sites')
+        plt.title('Model 1: Distribution of Percentage Values for Known Safe Sites')
+
+        # Calculate the total number of percentages less than 50% and more than 50%
+        less_than_50 = sum(count for percent, count in zip(unique_percentages, counts) if percent < 50)
+        more_than_50 = sum(count for percent, count in zip(unique_percentages, counts) if percent >= 50)
+
+        # Display the totals in the top right corner
+        plt.text(len(unique_percentages) - 1, max(counts), f"<50%: {less_than_50}\n≥50%: {more_than_50}",
+                ha='right', va='top', bbox=dict(facecolor='white', alpha=0.8))
 
         # Display the plot
         plt.show()
