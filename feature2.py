@@ -94,8 +94,8 @@ class FeatureExtraction:
 
         try:
             self.whois_response = whois.query(self.domain)
-        except:
-            print("self.domain ")
+        except Exception as e:
+            print(f"Error in whois: {e}")
             pass
 
         self.populate_features()
