@@ -77,7 +77,7 @@ class FeatureExtraction:
             )
             self.soup = BeautifulSoup(fully_rendered_html, 'html.parser')
 
-            self.response = requests.get(self.url, timeout=15)  # Set timeout to 10 seconds
+            self.response = requests.get(self.url, timeout=15)  # Set timeout to 15 seconds
             if not self.response or not self.response .status_code == 200 or not self.response.content not in ["b''", "b' '"]:
                 return None
 
@@ -425,7 +425,8 @@ class FeatureExtraction:
     def AbnormalURL(self):
         try:
             # Extract the host name from the URL
-            host_name = urlparse(self.url).hostname
+            host_name = self.urlparse.hostname
+            print("HOSTNAME: ", host_name)
             # Check if the host name is not included in the URL
             if host_name not in self.url:
                 print("Phishing 6")

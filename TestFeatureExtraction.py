@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec, patch
 from urllib.parse import urlparse
 from feature2 import FeatureExtraction
 
@@ -565,7 +565,7 @@ class TestFeatureExtraction(unittest.TestCase):
         self.assertEqual(result, -1)
 
 
-    def test_InfoEmail_Phshing(self):
+    def test_InfoEmail_Phishing(self):
 
         phishing_url = "http://example.com"
         feature_extraction = FeatureExtraction(phishing_url)
@@ -585,28 +585,67 @@ class TestFeatureExtraction(unittest.TestCase):
         # Test case for matching responses
 
         legitimate_url = "http://example.com"
+        
+        # Mock urlparse for the external objects
         feature_extraction = FeatureExtraction(legitimate_url)
 
-        feature_extraction.response = Mock()
-        feature_extraction.response.text = "sample_response"
-        feature_extraction.whois_response = "sample_response"
+        # Mock urlparse for the external objects
+        with unittest.mock.patch('urllib.parse.urlparse', side_effect=urlparse):
+            result = feature_extraction.AbnormalURL()
 
-        result = feature_extraction.AbnormalURL()
+
+        self.assertEqual(result, -1)
         self.assertEqual(result, 1)
 
 
     def test_AbnormalURL_Phishing(self):
-        # Test case for matching responses
+        # Test case for non matching responses
 
         phishing_url = "http://example.com"
+        
+        # Mock urlparse for the external objects
         feature_extraction = FeatureExtraction(phishing_url)
 
-        feature_extraction.response = Mock()
-        feature_extraction.response.text = "sample_response"
-        feature_extraction.whois_response = "malicious_response"
+        feature_extraction.url = "http://phishing.com"
 
-        result = feature_extraction.AbnormalURL()
+        # Mock urlparse for the external objects
+        with unittest.mock.patch('urllib.parse.urlparse', side_effect=urlparse):
+            result = feature_extraction.AbnormalURL()
+
+
         self.assertEqual(result, -1)
+
+
+    def test_WebsiteForwarding_Legitimate(self):
+        # Test case for matching responses
+        legitimate_url = "http://example.com"
+        
+        # Mock urlparse for the external objects
+        feature_extraction = FeatureExtraction(legitimate_url)
+
+        feature_extraction.response.history = [1]
+
+        # Mock urlparse for the external objects
+        result = feature_extraction.WebsiteForwarding()
+
+
+        self.assertEqual(result, 1)
+
+    def test_WebsiteForwarding_Phishing(self):
+        # Test case for matching responses
+        legitimate_url = "http://example.com"
+        
+        # Mock urlparse for the external objects
+        feature_extraction = FeatureExtraction(legitimate_url)
+
+        feature_extraction.response.history = [1,2,3,4]
+
+        # Mock urlparse for the external objects
+        result = feature_extraction.WebsiteForwarding()
+
+
+        self.assertEqual(result, -1)
+
 
 
 
