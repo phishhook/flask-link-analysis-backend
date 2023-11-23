@@ -89,10 +89,12 @@ class FeatureExtraction:
             self.urlparse = urlparse(self.url)
             self.domain = self.urlparse.netloc
         except:
+            print("Error in urlparse")
             pass
 
         try:
             self.whois_response = whois.query(self.domain)
+            print("self.domain ")
         except:
             pass
 
