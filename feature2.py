@@ -639,7 +639,6 @@ class FeatureExtraction:
             url = 'https://openpagerank.com/api/v1.0/getPageRank?domains%5B0%5D=' + self.domain
 
             request = requests.get(url, headers={'API-OPR':api_key})
-            print("req", request)
             result = request.json()
             latest_rank = int(result['response'][0]['rank'])
             print("Latest", latest_rank)
@@ -647,10 +646,7 @@ class FeatureExtraction:
             if latest_rank is not None and latest_rank < 10000:
                 return 1  # Legitimate
             elif latest_rank is not None and latest_rank >= 10000:
-                return 0  # Suspicious
-            else:
-                print("Phishing 26")
-                return -1  # Phishing (No rank information)
+                return -1  # Suspicious
 
         except Exception as e:
             print(f"Error in PageRank: {e}")
@@ -702,7 +698,7 @@ class FeatureExtraction:
                 print("Phishing 28")
                 return -1
             else:
-                ##print("This page is indexed by Google.")
+                print("This page is indexed by Google.")
                 return 1
         except:
             return -1
@@ -732,6 +728,7 @@ class FeatureExtraction:
         except Exception as e:
             print(f"Error fetching or parsing HTML: {e}")
             return -1
+        
     # 30
     def StatsReport(self):
         try:

@@ -893,11 +893,74 @@ class TestFeatureExtraction(unittest.TestCase):
         self.assertEqual(result, -1)
         
 
+    def test_WebsiteTraffic_Legitimate(self):
+        feature_extraction = FeatureExtraction("http://example.com")
+
+        result = feature_extraction.WebsiteTraffic()
+        self.assertEqual(result, 1)
 
 
+    def test_WebsiteTraffic_Phishing(self):
+        feature_extraction = FeatureExtraction("https://toffeeshare.com/")
+
+        result = feature_extraction.WebsiteTraffic()
+        self.assertEqual(result, 1)
+
+    def test_PageRank_Legitimate(self):
+        feature_extraction = FeatureExtraction("http://example.com")
+
+        result = feature_extraction.PageRank()
+        self.assertEqual(result, 1)
+
+    def test_PageRank_Phishing(self):
+        feature_extraction = FeatureExtraction("https://toffeeshare.com/")
+
+        result = feature_extraction.PageRank()
+        self.assertEqual(result, -1)
+
+    def test_GoogleIndex_Legitimate(self):
+        feature_extraction = FeatureExtraction("http://example.com")
+
+        result = feature_extraction.GoogleIndex()
+        self.assertEqual(result, 1)
+
+    def test_GoogleIndex_Phishing(self):
+        feature_extraction = FeatureExtraction("http://000m8ih.wcomhost.com/mama/23a2c/index_2.html")
+
+        result = feature_extraction.GoogleIndex()
+        self.assertEqual(result, -1)
 
 
+    def test_LinksPointingToPage_Phishing(self):
+        # Arrange
+        feature_extraction = FeatureExtraction("http://example.com")
 
+        feature_extraction.soup = Mock()
+
+        feature_extraction.soup.find_all.return_value = [
+            Mock(href="http://external.com"),
+            Mock(href="http://external.com"),
+            Mock(href="http://external.com")
+        ]
+
+        # Act
+        result = feature_extraction.LinksPointingToPage()
+
+        # Assert
+        self.assertEqual(result, -1)  # Legitimate
+
+    def test_StatsReport_Phishing(self):
+        # Test case for a phishing IP address match
+        feature_extraction = FeatureExtraction("http://example.com")
+        feature_extraction.domain = "phishing-ip.com"
+        result = feature_extraction.StatsReport()
+        self.assertEqual(result, -1)
+
+    def test_StatsReport_Legitimate(self):
+        # Test case for a phishing IP address match
+        feature_extraction = FeatureExtraction("http://example.com")
+        result = feature_extraction.StatsReport()
+        self.assertEqual(result, 1)
 
 
 if __name__ == '__main__':
