@@ -2,6 +2,10 @@ import unittest
 from unittest.mock import Mock, create_autospec, patch
 from urllib.parse import urlparse
 from feature2 import FeatureExtraction
+from bs4 import BeautifulSoup
+from selenium.webdriver.remote.webelement import WebElement
+from datetime import datetime, timedelta
+
 
 
 class TestFeatureExtraction(unittest.TestCase):
@@ -457,7 +461,6 @@ class TestFeatureExtraction(unittest.TestCase):
         feature_extraction.soup = Mock()
 
         # Mock the find_all method
-        # Mock the find_all method
         feature_extraction.soup.find_all.side_effect = [
             [
                 Mock(name='meta', get=lambda x, _: '' if x == 'content' else ''),
@@ -645,6 +648,253 @@ class TestFeatureExtraction(unittest.TestCase):
 
 
         self.assertEqual(result, -1)
+        
+    def test_StatusBarCust_Legitimate(self):
+        # Test case for matching responses
+        legitimate_url = "http://example.com"
+
+
+        # Mock urlparse for the external objects
+        feature_extraction = FeatureExtraction(legitimate_url)
+        feature_extraction.soup = Mock()
+
+
+        # Mock the find_all method
+        feature_extraction.soup.find_all.side_effect = [
+            [
+                Mock(name='div', get=lambda x: ' ' if x == 'onmouseover' else '')
+            ]
+        ]
+        
+
+        # Mock urlparse for the external objects
+        result = feature_extraction.StatusBarCust()
+
+
+        self.assertEqual(result, 1)
+
+
+    def test_StatusBarCust_Suspicious(self):
+        # Test case for matching responses
+        legitimate_url = "http://example.com"
+
+
+        # Mock urlparse for the external objects
+        feature_extraction = FeatureExtraction(legitimate_url)
+        feature_extraction.soup = None
+
+
+        # Mock urlparse for the external objects
+        result = feature_extraction.StatusBarCust()
+
+
+        self.assertEqual(result, 0)
+
+
+    def test_StatusBarCust_Phishing(self):
+        # Test case for matching responses
+        phishing_url = "http://example.com"
+
+
+        # Mock urlparse for the external objects
+        feature_extraction = FeatureExtraction(phishing_url)
+        feature_extraction.soup = Mock()
+
+
+        # Mock the find_all method
+        feature_extraction.soup.find_all.side_effect = [
+            [
+                Mock(name='div', get=lambda x: 'window.status=\'Phishing\';' if x == 'onmouseover' else '')
+            ]
+        ]
+        
+
+        # Mock urlparse for the external objects
+        result = feature_extraction.StatusBarCust()
+
+
+        self.assertEqual(result, -1)
+
+
+    def test_DisableRightClick_Phishing(self):
+        # Test case for matching responses
+        phishing_url = "http://example.com"
+
+
+        # Mock urlparse for the external objects
+        feature_extraction = FeatureExtraction(phishing_url)
+
+        html_content = """<h1 style="color:green"> 
+                            GeeksforGeeks 
+                        </h1> 
+                        <h2>Mouse click event</h2> 
+                        <button onclick="click(event)">Click me</button> 
+                        <p id="demo"></p> 
+                        <script> 
+                            document.onmousedown = click 
+                            
+                            // click function called 
+                            function click(event) { 
+                                
+                                // Condition to disable left click 
+                                if (event.button == 2) { 
+                                        document.getElementById("demo").innerHTML= "Right click not allowed" 
+                                } 
+                            } 
+                        </script>"""
+        
+        feature_extraction.soup = BeautifulSoup(html_content, 'html.parser')
+
+        # Call DisableRightClick method
+        result = feature_extraction.DisableRightClick()
+
+        self.assertEqual(result, -1)
+
+    def test_UsingPopupWindow_Phishing(self):
+
+        # Test case for pop-ups with text inputs
+        feature_extraction = FeatureExtraction("http://example.com")
+
+        with patch('selenium.webdriver.Chrome') as mock_chrome:
+            mock_driver = mock_chrome.return_value
+            mock_driver.window_handles = ['main_window', 'popup_window']
+            mock_driver.switch_to.window.return_value = None
+
+            # Mocking WebElement for text inputs
+            mock_text_input = Mock(spec=WebElement)
+            mock_driver.find_elements_by_css_selector.return_value = [mock_text_input]
+
+            result = feature_extraction.UsingPopupWindow()
+
+        self.assertEqual(result, -1)
+
+    def test_UsingPopupWindow_Phishing(self):
+
+        # Test case for pop-ups with text inputs
+        feature_extraction = FeatureExtraction("http://example.com")
+
+        with patch('selenium.webdriver.Chrome') as mock_chrome:
+            mock_driver = mock_chrome.return_value
+            mock_driver.window_handles = ['main_window', 'popup_window']
+            mock_driver.switch_to.window.return_value = None
+
+            # Mocking WebElement for text inputs
+            mock_text_input = Mock(spec=WebElement)
+            mock_driver.find_elements_by_css_selector.return_value = [mock_text_input]
+
+            result = feature_extraction.UsingPopupWindow()
+
+        self.assertEqual(result, -1)
+
+
+    def test_UsingPopupWindow_Legitimate(self):
+        # Test case for no pop-ups
+        feature_extraction = FeatureExtraction("http://example.com")
+
+        with patch('selenium.webdriver.Chrome') as mock_chrome:
+            mock_driver = mock_chrome.return_value
+            mock_driver.window_handles = ['main_window']
+
+            result = feature_extraction.UsingPopupWindow()
+
+        self.assertEqual(result, 1)
+
+    def test_UsingPopupWindow_Suspicious(self):
+        # Test case for an exception during execution
+        feature_extraction = FeatureExtraction("http://example.com")
+
+        with patch('selenium.webdriver.Chrome') as mock_chrome:
+            mock_chrome.side_effect = Exception("Test exception")
+
+            result = feature_extraction.UsingPopupWindow()
+
+        self.assertEqual(result, 0)  # Suspicious (Error or exception)
+
+    def test_IframeRedirection_Phishing(self):
+        # Test case for phishing iframe with invisible frame borders
+        feature_extraction = FeatureExtraction("http://example.com")
+
+        html_content = """<html><body><iframe src="http://example.com" frameborder="0"></iframe></body></html>"""
+        
+        feature_extraction.soup = BeautifulSoup(html_content, 'html.parser')
+
+
+        result = feature_extraction.IframeRedirection()
+        self.assertEqual(result, -1)
+
+
+    def test_IframeRedirection_Legitimate(self):
+        # Test case for phishing iframe with invisible frame borders
+        feature_extraction = FeatureExtraction("http://example.com")
+
+        html_content = """<html><body><iframe src="http://example.com"></iframe></body></html>"""
+        
+        feature_extraction.soup = BeautifulSoup(html_content, 'html.parser')
+
+
+        result = feature_extraction.IframeRedirection()
+        self.assertEqual(result, 1)
+
+    def test_IframeRedirection_Suspicious(self):
+        # Test case for phishing iframe with invisible frame borders
+        feature_extraction = FeatureExtraction("http://example.com")
+
+        html_content = None
+        
+        feature_extraction.soup = html_content
+
+
+        result = feature_extraction.IframeRedirection()
+        self.assertEqual(result, 0)
+
+
+    def test_AgeofDomain_Legitimate(self):
+        # Test case for a legitimate domain with an age greater than 6 months
+        feature_extraction = FeatureExtraction("http://example.com")
+
+        whois_response = Mock(creation_date=datetime.now() - timedelta(days=210))
+        feature_extraction.whois_response = whois_response
+        result = feature_extraction.AgeofDomain()
+        self.assertEqual(result, 1)
+
+
+    def test_AgeofDomain_Phishing(self):
+        # Test case for a legitimate domain with an age greater than 6 months
+        feature_extraction = FeatureExtraction("http://example.com")
+
+        whois_response = Mock(creation_date=datetime.now() - timedelta(days=30))
+        feature_extraction.whois_response = whois_response
+        result = feature_extraction.AgeofDomain()
+        self.assertEqual(result, -1)
+
+
+    def test_AgeofDomain_Suspicious(self):
+        # Test case for a legitimate domain with an age greater than 6 months
+        feature_extraction = FeatureExtraction("http://example.com")
+
+        whois_response = Mock(side_effect=Exception('Simulated error'))
+        feature_extraction.whois_response = whois_response
+        result = feature_extraction.AgeofDomain()
+        self.assertEqual(result, 0)
+
+
+    def test_DNSRecording_Legitimate(self):
+        feature_extraction = FeatureExtraction("http://example.com")
+
+        result = feature_extraction.DNSRecording()
+        self.assertEqual(result, 1)
+        
+
+
+    def test_DNSRecording_Phishing(self):
+        feature_extraction = FeatureExtraction("http://3t0xsjjehns3-1322632174.cos.na-toronto.myqcloud.com/3t0xsjjehns3.html")
+
+        result = feature_extraction.DNSRecording()
+        self.assertEqual(result, -1)
+        
+
+
+
 
 
 

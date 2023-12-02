@@ -29,6 +29,11 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import undetected_chromedriver as uc
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
+
 
 
 class FeatureExtraction:
@@ -51,19 +56,26 @@ class FeatureExtraction:
         self.response = ""
         self.soup = ""
 
+            
         try:
             # Set up a headless browser (you may need to download the appropriate driver)
             options = webdriver.ChromeOptions()
+            options.add_argument("--disable-blink-features=AutomationControlled")
             options.add_argument('--headless')
             driver = webdriver.Chrome(options=options)
+            ##driver = uc.Chrome(options)
 
             # Open the URL in the browser
             driver.get(url)
 
             # Wait until the page has fully loaded and the URL has stabilized
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.TAG_NAME, 'body'))
-            )
+            WebDriverWait(driver, 10)
+
+            # Detect Cloudflare challenge
+            driver = self.detect_cloudflare_challenge(driver)
+            if driver is None:
+                print("Detected Cloudflare security challenge. Returning None.")
+                return None
 
             # Use JavaScript to get the final URL
             final_url = driver.execute_script("return window.location.href;")
@@ -76,12 +88,14 @@ class FeatureExtraction:
                 lambda x: x.page_source
             )
             self.soup = BeautifulSoup(fully_rendered_html, 'html.parser')
+            driver.quit()
 
             self.response = requests.get(self.url, timeout=15)  # Set timeout to 15 seconds
             if not self.response or not self.response .status_code == 200 or not self.response.content not in ["b''", "b' '"]:
                 return None
 
         except Exception as e:
+            driver.quit()
             print(f"Error: {e}")
             return None
         
@@ -111,67 +125,91 @@ class FeatureExtraction:
 
             if method is not None and callable(method):
                 self.features.append(method())
-
+                
+    def detect_cloudflare_challenge(self, driver):
+        try:
+            # Check if the Cloudflare security challenge iframe is present
+            iframe_present = EC.presence_of_element_located((By.CSS_SELECTOR, "iframe[title='Widget containing a Cloudflare security challenge']"))
+            WebDriverWait(driver, 3).until(iframe_present)
+            
+            # If the iframe is present, return None to indicate a Cloudflare security challenge
+            return None
+        except Exception as e:
+            # If an exception occurs or the iframe is not present, continue with the normal flow
+            return driver
 
     #1
     def UsingIP(self):
-        match = re.search(
-            '(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.'
-            '([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\/)|'  # IPv4
-            '((0x[0-9a-fA-F]{1,2})\\.(0x[0-9a-fA-F]{1,2})\\.(0x[0-9a-fA-F]{1,2})\\.(0x[0-9a-fA-F]{1,2})\\/)|'  # IPv4 in hexadecimal
-            '(?:[a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}|'
-            '[0-9a-fA-F]{7}', self.url)  # Ipv6
-        if match:
-            print("Phishing 1")
+        try: 
+            match = re.search(
+                '(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.'
+                '([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\/)|'  # IPv4
+                '((0x[0-9a-fA-F]{1,2})\\.(0x[0-9a-fA-F]{1,2})\\.(0x[0-9a-fA-F]{1,2})\\.(0x[0-9a-fA-F]{1,2})\\/)|'  # IPv4 in hexadecimal
+                '(?:[a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}|'
+                '[0-9a-fA-F]{7}', self.url)  # Ipv6
+            if match:
+                print("Phishing 1")
+                return -1
+            else:
+                return 1
+        except:
             return -1
-        else:
-            return 1
         
     #2
     def LongURL(self):
-        url_length = len(self.url)
-
-        if url_length < 54:
-            return 1
-        elif 54 <= url_length <= 75:
-            return 0
-        else:
-            print("Phishing 2")
+        try:
+            url_length = len(self.url)
+            if url_length < 54:
+                return 1
+            elif 54 <= url_length <= 75:
+                return 0
+            else:
+                print("Phishing 2")
+                return -1
+        except:
             return -1
-        
+            
     #3
     def ShortURL(self):
-        match = re.search('bit\.ly|goo\.gl|shorte\.st|go2l\.ink|x\.co|ow\.ly|t\.co|tinyurl|tr\.im|is\.gd|cli\.gs|'
-                        'yfrog\.com|migre\.me|ff\.im|tiny\.cc|url4\.eu|twit\.ac|su\.pr|twurl\.nl|snipurl\.com|'
-                        'short\.to|BudURL\.com|ping\.fm|post\.ly|Just\.as|bkite\.com|snipr\.com|fic\.kr|loopt\.us|'
-                        'doiop\.com|short\.ie|kl\.am|wp\.me|rubyurl\.com|om\.ly|to\.ly|bit\.do|t\.co|lnkd\.in|'
-                        'db\.tt|qr\.ae|adf\.ly|goo\.gl|bitly\.com|cur\.lv|tinyurl\.com|ow\.ly|bit\.ly|ity\.im|'
-                        'q\.gs|is\.gd|po\.st|bc\.vc|twitthis\.com|u\.to|j\.mp|buzurl\.com|cutt\.us|u\.bb|yourls\.org|'
-                        'x\.co|prettylinkpro\.com|scrnch\.me|filoops\.info|vzturl\.com|qr\.net|1url\.com|tweez\.me|v\.gd|'
-                        'tr\.im|link\.zip\.net',
-                        self.url)       
-        if match:
-            print("Phishing 3")
+        try:
+            match = re.search('bit\.ly|goo\.gl|shorte\.st|go2l\.ink|x\.co|ow\.ly|t\.co|tinyurl|tr\.im|is\.gd|cli\.gs|'
+                            'yfrog\.com|migre\.me|ff\.im|tiny\.cc|url4\.eu|twit\.ac|su\.pr|twurl\.nl|snipurl\.com|'
+                            'short\.to|BudURL\.com|ping\.fm|post\.ly|Just\.as|bkite\.com|snipr\.com|fic\.kr|loopt\.us|'
+                            'doiop\.com|short\.ie|kl\.am|wp\.me|rubyurl\.com|om\.ly|to\.ly|bit\.do|t\.co|lnkd\.in|'
+                            'db\.tt|qr\.ae|adf\.ly|goo\.gl|bitly\.com|cur\.lv|tinyurl\.com|ow\.ly|bit\.ly|ity\.im|'
+                            'q\.gs|is\.gd|po\.st|bc\.vc|twitthis\.com|u\.to|j\.mp|buzurl\.com|cutt\.us|u\.bb|yourls\.org|'
+                            'x\.co|prettylinkpro\.com|scrnch\.me|filoops\.info|vzturl\.com|qr\.net|1url\.com|tweez\.me|v\.gd|'
+                            'tr\.im|link\.zip\.net',
+                            self.url)       
+            if match:
+                print("Phishing 3")
+                return -1
+            return 1
+        except:
             return -1
-        return 1
 
     #4
     def Symbol_(self): 
-        if '@' in self.url:
-            print("Phishing 4")
-            return -1  # Phishing
-        else:
-            return 1  # Legitimate
+        try:
+            if '@' in self.url:
+                print("Phishing 4")
+                return -1  # Phishing
+            else:
+                return 1  # Legitimate
+        except:
+            return -1
         
     #5
     def Redirecting_(self):
-        double_slash_position = self.url.rfind('//')
-
-        if double_slash_position > 6:
-            print("Phishing 5")
-            return -1  # Phishing
-        else:
-            return 1  # Legitimate
+        try: 
+            double_slash_position = self.url.rfind('//')
+            if double_slash_position > 6:
+                print("Phishing 5")
+                return -1  # Phishing
+            else:
+                return 1  # Legitimate
+        except:
+            return -1
         
     #6
     def PrefixSuffix_(self):
@@ -181,41 +219,48 @@ class FeatureExtraction:
                 return -1
             return 1
         except:
-            return 
+            return -1
     #7
     def SubDomains(self):
-        # Remove 'www.' if it exists
-        self.urlparse = urlparse(self.url)
-        self.domain = self.urlparse.netloc
-        domain_without_www = self.domain.replace('www.', '')
+        try: 
+            # Remove 'www.' if it exists
+            self.urlparse = urlparse(self.url)
+            self.domain = self.urlparse.netloc
+            domain_without_www = self.domain.replace('www.', '')
 
-        # Remove country-code top-level domain (ccTLD) if it exists
-        parts = domain_without_www.split('.')
-        if len(parts) > 1:
-            ccTLD = parts[-1]
-            if ccTLD.isalpha() and len(ccTLD) <= 4:  # Assuming ccTLD is alphabetical and has at most 4 characters
-                domain_without_www = '.'.join(parts[:-1])
+            # Remove country-code top-level domain (ccTLD) if it exists
+            parts = domain_without_www.split('.')
+            if len(parts) > 1:
+                ccTLD = parts[-1]
+                if ccTLD.isalpha() and len(ccTLD) <= 4:  # Assuming ccTLD is alphabetical and has at most 4 characters
+                    domain_without_www = '.'.join(parts[:-1])
 
-        # Count the remaining dots
-        num_dots = domain_without_www.count('.')
+            # Count the remaining dots
+            print("domain_without_www")
+            print(domain_without_www)
+            num_dots = domain_without_www.count('.')
 
-        if num_dots <= 1:
-            return 1  # Legitimate
-        elif num_dots == 2:
-            return 0  # Suspicious
-        else:
-            print("Phishing 7")
-            return -1  # Phishing
-
+            if num_dots == 0:
+                return 1  # Legitimate
+            elif num_dots == 1:
+                return 0  # Suspicious
+            else:
+                print("Phishing 7")
+                return -1  # Phishing
+        except:
+            return -1
     #8
     def HTTPS(self):
         # Check if the URL starts with 'https://'
-        if self.url.startswith('https://') and self.originalurl.startswith('https://'):
-            print("HTTPS???")
-            return 1
+        try: 
+            if self.url.startswith('https://') and self.originalurl.startswith('https://'):
+                print("HTTPS???")
+                return 1
 
-        print("Phishing 8")
-        return -1  # Phishing if not using HTTPS
+            print("Phishing 8")
+            return -1  # Phishing if not using HTTPS
+        except:
+            return -1
 
 
     #9
@@ -234,7 +279,7 @@ class FeatureExtraction:
                 return 1  # Legitimate
         except:
             # Handle exceptions if the domain registration information is not available
-            return 0  # Suspicious
+            return -1 # Suspicious
 
     #10
     def Favicon(self):
@@ -251,9 +296,9 @@ class FeatureExtraction:
 
     #11 
     def NonStdPort(self):
-        self.urlparse = urlparse(self.url)
-        self.domain = self.urlparse.netloc
-        try:
+        try: 
+            self.urlparse = urlparse(self.url)
+            self.domain = self.urlparse.netloc
             port = self.domain.split(":")
             if len(port)>1:
                 return -1
@@ -262,17 +307,18 @@ class FeatureExtraction:
             return -1
 
 
-
     #12 
     def HTTPSDomainURL(self):
-        self.urlparse = urlparse(self.url)
-        self.domain = self.urlparse.netloc
-        if "https" in self.domain:
-            print("Phishing 12")
-            return -1  # Phishing
-        else:
-            return 1  # Legitimate
-        
+        try: 
+            self.urlparse = urlparse(self.url)
+            self.domain = self.urlparse.netloc
+            if "https" in self.domain:
+                print("Phishing 12")
+                return -1  # Phishing
+            else:
+                return 1  # Legitimate
+        except:
+            -1
     
     #13    
     def RequestURL(self):
@@ -317,39 +363,24 @@ class FeatureExtraction:
     #14
     def AnchorURL(self):
         try:
-            total_anchors = 0
-            different_domain_anchors = 0
-            empty_page_anchors = 0
+            i,unsafe = 0,0
+            for a in self.soup.find_all('a', href=True):
+                if "#" in a['href'] or "javascript" in a['href'].lower() or "mailto" in a['href'].lower() or not (self.url in a['href'] or self.domain in a['href']):
+                    unsafe = unsafe + 1
+                i = i + 1
 
-            # Check for anchor tags in the webpage
-            for tag in self.soup.find_all('a', href=True):
-                total_anchors += 1
-                href = tag.get('href', None)
-
-                # Check if the anchor links to a different domain
-                if href and urlparse(href).netloc != self.domain:
-                    different_domain_anchors += 1
-
-                # Check if the anchor does not link to any webpage
-                if not href or href.startswith(('#', 'JavaScript:')):
-                    empty_page_anchors += 1
-
-            # Calculate the percentage of anchors linking to a different domain
-            if total_anchors > 0:
-                percentage = (different_domain_anchors / total_anchors) * 100
-
-                if percentage < 31:
-                    return 1  # Legitimate
-                elif 31 <= percentage <= 67 or empty_page_anchors == total_anchors:
-                    return 0  # Suspicious
+            try:
+                percentage = unsafe / float(i) * 100
+                if percentage < 31.0:
+                    return 1
+                elif ((percentage >= 31.0) and (percentage < 67.0)):
+                    return 0
                 else:
-                    print("Phishing 14")
-                    return -1  # Phishing
-
-            return 0  # Suspicious (total_anchors is zero)
-        except Exception as e:
-            print(f"Error in AnchorURL check: {e}")
-            return -1  # Phishing (Error or exception)
+                    return -1
+            except:
+                return -1
+        except:
+            return -1
 
     #15
     def LinksInScriptTags(self):
@@ -410,7 +441,7 @@ class FeatureExtraction:
 
         except Exception as e:
             print(f"Error in SFH check: {e}")
-            return 0  # Suspicious (Error or exception)
+            return -1  # Suspicious (Error or exception)
 
 
     # 17. InfoEmail
@@ -431,17 +462,21 @@ class FeatureExtraction:
             print("HOSTNAME: ", host_name)
             # Check if the host name is not included in the URL
             if host_name not in self.url:
-                print("Phishing 6")
+                print("Phishing 18")
                 return -1  # Phishing
             else:
                 return 1  # Legitimate
         except:
-            return 0
+            return -1
         
     #19
     def WebsiteForwarding(self):
         try:
             # Assuming you have access to the HTTP response object
+            if self.url != self.originalurl:
+                print("Phishing 19")
+                return -1
+            
             if self.response:
                 # Get the number of redirects
                 num_redirects = len(self.response.history)
@@ -454,11 +489,11 @@ class FeatureExtraction:
                     print("Phishing 19")
                     return -1  # Phishing
 
-            return 0  # Suspicious (No HTTP response available)
+            return -1  # Suspicious (No HTTP response available)
 
         except Exception as e:
             print(f"Error in WebsiteForwarding: {e}")
-            return 0  # Suspicious (Error or exception)
+            return -1  # Suspicious (Error or exception)
         
     #20
     def StatusBarCust(self):
@@ -476,86 +511,88 @@ class FeatureExtraction:
 
                 return 1  # Legitimate
 
-            return 0  # Suspicious (No HTML content available)
+            return -1  # Suspicious (No HTML content available)
 
         except Exception as e:
             print(f"Error in StatusBarCust: {e}")
-            return 0  # Suspicious (Error or exception)    
+            return -1  # Suspicious (Error or exception)    
         
      # 21. DisableRightClick
     def DisableRightClick(self):
         try:
-            # Assuming you have access to the HTML content of the webpage
-            if self.soup:
-                # Search for event.button==2 condition in the source code
-                disable_right_click_elements = self.soup.find_all(
-                    lambda tag: tag.has_attr('oncontextmenu') and 'event.button==2' in tag['oncontextmenu']
-                )
+            # Convert BeautifulSoup object to string
+            html_content = str(self.soup)
 
-                if disable_right_click_elements:
-                    print("Phishing 21")
-                    return -1  # Phishing (Right click disabled)
+            # Search for the pattern "event.button==2" in the HTML content
+            pattern = re.compile(r"event.button ?== ?2", re.IGNORECASE)
+            match = pattern.search(html_content)
 
-                return 1  # Legitimate
-
-            return 0  # Suspicious (No HTML content available)
+            # If the pattern is found, right-click is disabled (Phishing)
+            if match:
+                return -1
+            else:
+                return 1  # Right-click is not disabled (Legitimate)
 
         except Exception as e:
-            print(f"Error in DisableRightClick: {e}")
-            return 0  # Suspicious (Error or exception)
+            print(f"Error in is_right_click_disabled: {e}")
+            return -1  # Return False in case of an error or exception
+
 
     # 22. UsingPopupWindow
     def UsingPopupWindow(self):
         try:
-            # Assuming you have access to the HTML content of the webpage
-            if self.soup:
-                # Search for input elements within pop-up windows
-                pop_up_elements = self.soup.find_all(lambda tag: 'window.open' in str(tag))
+            options = webdriver.ChromeOptions()
+            options.add_argument("--disable-blink-features=AutomationControlled")
+            options.add_argument('--headless')
+            driver = webdriver.Chrome(options=options)            
+            driver.get(self.url)
 
-                print("POP UP 1")
 
-                for pop_up_element in pop_up_elements:
-                    # Check if the pop-up window contains text fields (input elements)
-                    print("POP UP")
-                    text_fields = pop_up_element.find_all('input', {'type': 'text'})
+            # Wait for a certain amount of time (e.g., 10 seconds) for the pop-up to appear
+            WebDriverWait(driver, 20)
 
-                    if text_fields:
-                        print("Phishing 22")
-                        return -1  # Phishing (Pop-up window contains text fields)
+            # Check if there are multiple windows open
+            window_handles = driver.window_handles
+            print(len(window_handles))
+            if len(window_handles) > 1:
+                print("Pop-ups detected!")
 
-                return 1  # Legitimate
+                # Switch to the pop-up window
+                driver.switch_to.window(window_handles[1])
 
-            return 0  # Suspicious (No HTML content available)
+                # Check if the pop-up has text inputs
+                text_inputs = driver.find_elements_by_css_selector('input[type="text"]')
+                driver.quit()
+                if text_inputs:
+                    print("Pop-up has text inputs!")
+                    return -1
 
+                return -1  # Pop-ups detected, but no text inputs found
+            
+            if re.findall(r"alert\(", self.response.text):
+                return -1
+
+            return 1  # No pop-ups detected
         except Exception as e:
+            driver.quit()
             print(f"Error in UsingPopupWindow: {e}")
-            return 0  # Suspicious (Error or exception)
+            return -1  # Suspicious (Error or exception)
 
     # 23. IframeRedirection
     def IframeRedirection(self):
         try:
-            # Assuming you have access to the HTML content of the webpage
-            if self.soup:
-                # Search for iframe elements
-                iframe_elements = self.soup.find_all('iframe')
-
-                for iframe_element in iframe_elements:
-                    # Check if the iframe has the "frameBorder" attribute set to 0 or "no"
-                    frame_border = iframe_element.get('frameborder', '').lower()
-                    if frame_border == '0' or frame_border == 'no':
-                        print("Phishing 23")
-                        return -1  # Phishing (Iframe redirection with invisible frame borders)
-
-                return 1  # Legitimate
-
-            return 0  # Suspicious (No HTML content available)
-
+            if re.findall(r"[<iframe>|<frameBorder>]", self.response.text):
+                print("Phishing 23")
+                return -1
+            else:
+                return 1
         except Exception as e:
             print(f"Error in IframeRedirection: {e}")
-            return 0  # Suspicious (Error or exception)
+            return -1  # Suspicious (Error or exception)
 
     #24
     def AgeofDomain(self):
+        print("AgeofDomain")
         try:
             # Assuming you have access to the domain registration information
             creation_date = self.whois_response.creation_date
@@ -570,26 +607,28 @@ class FeatureExtraction:
                 else:
                     print("Phishing 24")
                     return -1  # Phishing
-
-            return 0  # Suspicious (No creation date available)
-
+                
+            return -1
         except Exception as e:
             print(f"Error in AgeofDomain: {e}")
-            return 0  # Suspicious (Error or exception)
+            return -1  # Suspicious (Error or exception)
         
 
     #25
     def DNSRecording(self):
         try:
-            nameservers = dns.resolver.resolve(self.domain,'NS')
+            self.domain = self.urlparse.netloc
+            domain_without_www = self.domain.replace('www.', '')
+            nameservers = dns.resolver.resolve(domain_without_www,'NS')
             if len(nameservers)>0:
                 return 1
             else:
                 print("Phishing 25")
                 return -1
-        except:
-            return 0
-
+        except Exception as e:
+            print(f"Error in DNSRecording: {e}")
+            return -1  # Suspicious (Error or exception)
+        
 
     #26
     def WebsiteTraffic(self):
@@ -653,43 +692,46 @@ class FeatureExtraction:
         
     # 28
     def GoogleIndex(self):
-        google = "https://www.google.com/search?q=site:" + self.url + "&hl=en"
-        response = requests.get(google, cookies={"CONSENT": "YES+1"})
-        soup = BeautifulSoup(response.content, "html.parser")
-        not_indexed = re.compile("did not match any documents")
+        try: 
+            google = "https://www.google.com/search?q=site:" + self.url + "&hl=en"
+            response = requests.get(google, cookies={"CONSENT": "YES+1"})
+            soup = BeautifulSoup(response.content, "html.parser")
+            not_indexed = re.compile("did not match any documents")
 
-        if soup(text=not_indexed):
-            print("Phishing 28")
+            if soup(text=not_indexed):
+                print("Phishing 28")
+                return -1
+            else:
+                ##print("This page is indexed by Google.")
+                return 1
+        except:
             return -1
-        else:
-            ##print("This page is indexed by Google.")
-            return 1
         
     #29
     def LinksPointingToPage(self):
         try:
-
             # Find all <a> tags with an 'href' attribute
             links = self.soup.find_all('a', href=True)
 
-            # Filter external links by checking if they have a different domain
-            external_links = [link['href'] for link in links if self.domain not in link['href']]
+            # Get the domain of the current URL
+            current_domain = urlparse(self.url).netloc
 
-            # Get the count of external links
-            external_links_count = len(external_links)
+            # Filter links pointing to the same domain
+            same_domain_links = [link['href'] for link in links if urlparse(link['href']).netloc == current_domain]
 
-            if external_links_count == 0:
-                return 1
-            elif external_links_count <= 2:
-                return 0
-            else:
+            # Get the count of links pointing to the same domain
+            same_domain_links_count = len(same_domain_links)
+
+            if same_domain_links_count == 0:
                 print("Phishing 29")
-                print(external_links_count)
-                return -1
+                return -1  # Phishing
+            elif 0 < same_domain_links_count <= 2:
+                return 0  # Suspicious
+            else:
+                return 1  # Legitimate
         except Exception as e:
             print(f"Error fetching or parsing HTML: {e}")
             return -1
-        
     # 30
     def StatsReport(self):
         try:
@@ -708,7 +750,8 @@ class FeatureExtraction:
                 return -1
             return 1
         except:
-            return 1
+            return -1
         
     def getFeaturesList(self):
+        print(self.features)
         return self.features

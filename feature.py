@@ -536,4 +536,5 @@ class FeatureExtraction:
             return 1
     
     def getFeaturesList(self):
+        print(self.features)
         return self.features
