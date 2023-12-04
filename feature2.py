@@ -74,12 +74,10 @@ class FeatureExtraction:
             # Detect Cloudflare challenge
             driver = self.detect_cloudflare_challenge(driver)
             if driver is None:
-                print("Detected Cloudflare security challenge. Returning None.")
                 return None
 
             # Use JavaScript to get the final URL
             final_url = driver.execute_script("return window.location.href;")
-            print("Final URL (Selenium):", final_url)            
 
             self.url = final_url
 
@@ -96,20 +94,17 @@ class FeatureExtraction:
 
         except Exception as e:
             driver.quit()
-            print(f"Error: {e}")
             return None
         
         try:
             self.urlparse = urlparse(self.url)
             self.domain = self.urlparse.netloc
         except:
-            print("Error in urlparse")
             pass
 
         try:
             self.whois_response = whois.query(self.domain)
         except Exception as e:
-            print(f"Error in whois: {e}")
             pass
 
         self.populate_features()
@@ -148,7 +143,6 @@ class FeatureExtraction:
                 '(?:[a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}|'
                 '[0-9a-fA-F]{7}', self.url)  # Ipv6
             if match:
-                print("Phishing 1")
                 return -1
             else:
                 return 1
@@ -164,7 +158,6 @@ class FeatureExtraction:
             elif 54 <= url_length <= 75:
                 return 0
             else:
-                print("Phishing 2")
                 return -1
         except:
             return -1
@@ -182,7 +175,6 @@ class FeatureExtraction:
                             'tr\.im|link\.zip\.net',
                             self.url)       
             if match:
-                print("Phishing 3")
                 return -1
             return 1
         except:
@@ -192,7 +184,6 @@ class FeatureExtraction:
     def Symbol_(self): 
         try:
             if '@' in self.url:
-                print("Phishing 4")
                 return -1  # Phishing
             else:
                 return 1  # Legitimate
@@ -204,7 +195,6 @@ class FeatureExtraction:
         try: 
             double_slash_position = self.url.rfind('//')
             if double_slash_position > 6:
-                print("Phishing 5")
                 return -1  # Phishing
             else:
                 return 1  # Legitimate
@@ -236,8 +226,6 @@ class FeatureExtraction:
                     domain_without_www = '.'.join(parts[:-1])
 
             # Count the remaining dots
-            print("domain_without_www")
-            print(domain_without_www)
             num_dots = domain_without_www.count('.')
 
             if num_dots == 0:
@@ -245,7 +233,6 @@ class FeatureExtraction:
             elif num_dots == 1:
                 return 0  # Suspicious
             else:
-                print("Phishing 7")
                 return -1  # Phishing
         except:
             return -1
@@ -254,10 +241,8 @@ class FeatureExtraction:
         # Check if the URL starts with 'https://'
         try: 
             if self.url.startswith('https://') and self.originalurl.startswith('https://'):
-                print("HTTPS???")
                 return 1
 
-            print("Phishing 8")
             return -1  # Phishing if not using HTTPS
         except:
             return -1
@@ -270,10 +255,8 @@ class FeatureExtraction:
             expiration_date = self.whois_response.expiration_date
             creation_date = self.whois_response.creation_date
             age = (expiration_date.year-creation_date.year)*12 + (expiration_date.month-creation_date.month)
-            print(age)
 
             if age <= 12:
-                print("Phishing 9")
                 return -1  # Phishing
             else:
                 return 1  # Legitimate
@@ -313,7 +296,6 @@ class FeatureExtraction:
             self.urlparse = urlparse(self.url)
             self.domain = self.urlparse.netloc
             if "https" in self.domain:
-                print("Phishing 12")
                 return -1  # Phishing
             else:
                 return 1  # Legitimate
@@ -334,7 +316,6 @@ class FeatureExtraction:
                     external_objects += 1
 
 
-            print("total_objects", total_objects)
             # Check for external objects in the stylesheets and scripts
             for tag in self.soup.find_all(['link']):
                 total_objects += 1
@@ -351,12 +332,10 @@ class FeatureExtraction:
                 elif 22 <= percentage <= 61:
                     return 0  # Suspicious
                 else:
-                    print("Phishing 13")
                     return -1  # Phishing
 
             return 0  # Suspicious (total_objects is zero)
         except Exception as e:
-            print(f"Error in RequestURL check: {e}")
             return -1  # Phishing (Error or exception)
 
 
@@ -369,6 +348,7 @@ class FeatureExtraction:
                     unsafe = unsafe + 1
                 i = i + 1
 
+
             try:
                 percentage = unsafe / float(i) * 100
                 if percentage < 31.0:
@@ -379,12 +359,11 @@ class FeatureExtraction:
                     return -1
             except:
                 return -1
-        except:
+        except Exception as e:
             return -1
 
     #15
     def LinksInScriptTags(self):
-        print("LinksInScriptTags")
         try:
             total_tags = 0
             total_links = 0
@@ -402,19 +381,16 @@ class FeatureExtraction:
             # Calculate the percentage of links in Meta, Script, and Link tags
             if total_tags > 0:
                 percentage = (total_links / total_tags) * 100
-                print("PERCENTAGE!!!", percentage)
 
                 if percentage < 17:
                     return 1  # Legitimate
                 elif 17 <= percentage <= 81:
                     return 0  # Suspicious
                 else:
-                    print("Phishing 15")
                     return -1  # Phishing
 
             return 0  # Suspicious (total_tags is zero)
         except Exception as e:
-            print(f"Error in LinksInScriptTags check: {e}")
             return -1  # Phishing (Error or exception)
 
 
@@ -429,7 +405,6 @@ class FeatureExtraction:
 
                 # Check for "about:blank" or empty action
                 if action == '' or action == 'about:blank':
-                    print("Phishing 16")
                     return -1  # Phishing
 
                 # Check if the action domain is different from the main domain
@@ -440,7 +415,6 @@ class FeatureExtraction:
             return 1  # Legitimate
 
         except Exception as e:
-            print(f"Error in SFH check: {e}")
             return -1  # Suspicious (Error or exception)
 
 
@@ -459,10 +433,8 @@ class FeatureExtraction:
         try:
             # Extract the host name from the URL
             host_name = self.urlparse.hostname
-            print("HOSTNAME: ", host_name)
             # Check if the host name is not included in the URL
             if host_name not in self.url:
-                print("Phishing 18")
                 return -1  # Phishing
             else:
                 return 1  # Legitimate
@@ -474,7 +446,6 @@ class FeatureExtraction:
         try:
             # Assuming you have access to the HTTP response object
             if self.url != self.originalurl:
-                print("Phishing 19")
                 return -1
             
             if self.response:
@@ -486,13 +457,11 @@ class FeatureExtraction:
                 elif 2 <= num_redirects < 4:
                     return 0  # Suspicious
                 else:
-                    print("Phishing 19")
                     return -1  # Phishing
 
             return -1  # Suspicious (No HTTP response available)
 
         except Exception as e:
-            print(f"Error in WebsiteForwarding: {e}")
             return -1  # Suspicious (Error or exception)
         
     #20
@@ -506,7 +475,6 @@ class FeatureExtraction:
                 for element in onMouseOver_elements:
                     # Check if onMouseOver changes the status bar
                     if "window.status" in str(element.get('onmouseover')):
-                        print("Phishing 20")
                         return -1  # Phishing
 
                 return 1  # Legitimate
@@ -514,7 +482,6 @@ class FeatureExtraction:
             return -1  # Suspicious (No HTML content available)
 
         except Exception as e:
-            print(f"Error in StatusBarCust: {e}")
             return -1  # Suspicious (Error or exception)    
         
      # 21. DisableRightClick
@@ -534,7 +501,6 @@ class FeatureExtraction:
                 return 1  # Right-click is not disabled (Legitimate)
 
         except Exception as e:
-            print(f"Error in is_right_click_disabled: {e}")
             return -1  # Return False in case of an error or exception
 
 
@@ -553,9 +519,7 @@ class FeatureExtraction:
 
             # Check if there are multiple windows open
             window_handles = driver.window_handles
-            print(len(window_handles))
             if len(window_handles) > 1:
-                print("Pop-ups detected!")
 
                 # Switch to the pop-up window
                 driver.switch_to.window(window_handles[1])
@@ -564,7 +528,6 @@ class FeatureExtraction:
                 text_inputs = driver.find_elements_by_css_selector('input[type="text"]')
                 driver.quit()
                 if text_inputs:
-                    print("Pop-up has text inputs!")
                     return -1
 
                 return -1  # Pop-ups detected, but no text inputs found
@@ -574,25 +537,31 @@ class FeatureExtraction:
 
             return 1  # No pop-ups detected
         except Exception as e:
-            driver.quit()
-            print(f"Error in UsingPopupWindow: {e}")
             return -1  # Suspicious (Error or exception)
 
     # 23. IframeRedirection
     def IframeRedirection(self):
         try:
-            if re.findall(r"[<iframe>|<frameBorder>]", self.response.text):
-                print("Phishing 23")
-                return -1
-            else:
-                return 1
+            # Assuming you have access to the HTML content of the webpage
+            if self.soup:
+                # Search for iframe elements
+                iframe_elements = self.soup.find_all('iframe')
+
+                for iframe_element in iframe_elements:
+                    # Check if the iframe has the "frameBorder" attribute set to 0 or "no"
+                    frame_border = iframe_element.get('frameborder', '').lower()
+                    if frame_border == '0' or frame_border == 'no':
+                        return -1  # Phishing (Iframe redirection with invisible frame borders)
+
+                return 1  # Legitimate
+
+            return 0  # Suspicious (No HTML content available)
+
         except Exception as e:
-            print(f"Error in IframeRedirection: {e}")
-            return -1  # Suspicious (Error or exception)
+            return 0  # Suspicious (Error or exception)
 
     #24
     def AgeofDomain(self):
-        print("AgeofDomain")
         try:
             # Assuming you have access to the domain registration information
             creation_date = self.whois_response.creation_date
@@ -600,17 +569,14 @@ class FeatureExtraction:
             if creation_date:
                 # Calculate the age of the domain in months
                 age_in_months = (datetime.now() - creation_date).days / 30
-                print("AGE", age_in_months)
 
                 if age_in_months >= 6:
                     return 1  # Legitimate
                 else:
-                    print("Phishing 24")
                     return -1  # Phishing
                 
             return -1
         except Exception as e:
-            print(f"Error in AgeofDomain: {e}")
             return -1  # Suspicious (Error or exception)
         
 
@@ -623,10 +589,8 @@ class FeatureExtraction:
             if len(nameservers)>0:
                 return 1
             else:
-                print("Phishing 25")
                 return -1
         except Exception as e:
-            print(f"Error in DNSRecording: {e}")
             return -1  # Suspicious (Error or exception)
         
 
@@ -641,7 +605,6 @@ class FeatureExtraction:
             request = requests.get(url, headers={'API-OPR':api_key})
             result = request.json()
             latest_rank = int(result['response'][0]['rank'])
-            print("Latest", latest_rank)
 
             if latest_rank is not None and latest_rank < 10000:
                 return 1  # Legitimate
@@ -649,7 +612,6 @@ class FeatureExtraction:
                 return -1  # Suspicious
 
         except Exception as e:
-            print(f"Error in PageRank: {e}")
             return -1  # Phishing (Error or exception)
         
     #27
@@ -676,14 +638,11 @@ class FeatureExtraction:
                 # If the domain is not found then there will be no page_rank_integer
                 # and an exception will be thrown - this is the expeceted behaviour
                 page_rank_integer = data['response'][0]['page_rank_integer']
-                #print("Page rank " , page_rank_integer)
 
                 if page_rank_integer >= 5:
                     return 1
-            print("Phishing 27")
             return -1
         except:
-            print("Phishing 27")
             return -1
         
     # 28
@@ -695,10 +654,8 @@ class FeatureExtraction:
             not_indexed = re.compile("did not match any documents")
 
             if soup(text=not_indexed):
-                print("Phishing 28")
                 return -1
             else:
-                print("This page is indexed by Google.")
                 return 1
         except:
             return -1
@@ -719,14 +676,12 @@ class FeatureExtraction:
             same_domain_links_count = len(same_domain_links)
 
             if same_domain_links_count == 0:
-                print("Phishing 29")
                 return -1  # Phishing
             elif 0 < same_domain_links_count <= 2:
                 return 0  # Suspicious
             else:
                 return 1  # Legitimate
         except Exception as e:
-            print(f"Error fetching or parsing HTML: {e}")
             return -1
         
     # 30
@@ -750,5 +705,4 @@ class FeatureExtraction:
             return -1
         
     def getFeaturesList(self):
-        print(self.features)
         return self.features
