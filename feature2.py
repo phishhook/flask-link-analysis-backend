@@ -63,7 +63,6 @@ class FeatureExtraction:
             options.add_argument("--disable-blink-features=AutomationControlled")
             options.add_argument('--headless')
             driver = webdriver.Chrome(options=options)
-            ##driver = uc.Chrome(options)
 
             # Open the URL in the browser
             driver.get(url)
