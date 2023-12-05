@@ -31,12 +31,14 @@ app = Flask(__name__)
 def index():
 
     url = request.args.get("url")
-    obj = FeatureExtraction2(url)
+    obj= FeatureExtraction2(url)
+  
 
     if(obj.features == []):
         return "N/A"
     x = np.array(obj.getFeaturesList()).reshape(1,30) 
-
+    final_URL = obj.getFinalURL()
+    print(final_URL)
 
     y_pred =gbc.predict(x)[0]
     print(y_pred)
@@ -49,7 +51,9 @@ def index():
     #print(y_pro_non_phishing)
     # if(y_pred == 1 ):
     pred = "{0:.2f}%".format(y_pro_non_phishing*100)
-    return pred
+
+    response_str = f"{pred}, {final_URL}"
+    return response_str
     
 
 

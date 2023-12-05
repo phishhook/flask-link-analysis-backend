@@ -70,6 +70,8 @@ class FeatureExtraction:
 
             self.url = final_url
 
+            print(final_url)
+
             # Set a timeout for getting the page source
             fully_rendered_html = WebDriverWait(driver, 10).until(
                 lambda x: x.page_source
@@ -695,3 +697,6 @@ class FeatureExtraction:
         
     def getFeaturesList(self):
         return self.features
+
+    def getFinalURL(self):
+        return self.url
