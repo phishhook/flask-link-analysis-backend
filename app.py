@@ -35,7 +35,7 @@ def index():
   
 
     if(obj.features == []):
-        return "N/A"
+        return f"N/A, {url}"
     x = np.array(obj.getFeaturesList()).reshape(1,30) 
     final_URL = obj.getFinalURL()
     print(final_URL)
