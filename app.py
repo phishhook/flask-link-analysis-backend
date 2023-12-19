@@ -9,10 +9,7 @@ from sklearn import metrics
 import warnings
 import pickle
 warnings.filterwarnings('ignore')
-from feature import FeatureExtraction
 from feature2 import FeatureExtraction as FeatureExtraction2
-
-import time
 
 
 
